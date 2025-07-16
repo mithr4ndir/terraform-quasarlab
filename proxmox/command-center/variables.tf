@@ -15,12 +15,23 @@ variable "pm_node" {
   type = string
 }
 
+variable "sshkeys" {
+  type = string
+}
+
 variable "vm_defaults" {
+  description = "Default values for VM deployment"
   type = object({
-    sshkeys         = string
     username        = string
     password        = string
     storage_pool    = string
     network_bridge  = string
   })
+
+  default = {
+    username        = "ubuntu"
+    password        = "changeme"
+    storage_pool    = "truenas-iscsi"
+    network_bridge  = "vmbr0"
+  }
 }

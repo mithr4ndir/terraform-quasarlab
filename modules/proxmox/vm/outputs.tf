@@ -1,7 +1,7 @@
-output "vm_id" {
-  value = proxmox_vm_qemu.this.id
+output "vm_ids" {
+  value = { for k, vm in proxmox_vm_qemu.this : k => vm.id }
 }
 
-output "vm_ip" {
-  value = proxmox_vm_qemu.this.default_ipv4_address
+output "vm_ips" {
+  value = { for k, vm in proxmox_vm_qemu.this : k => vm.default_ipv4_address }
 }
