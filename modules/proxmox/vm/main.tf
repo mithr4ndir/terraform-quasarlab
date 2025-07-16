@@ -10,37 +10,50 @@ resource "proxmox_vm_qemu" "this" {
 
   name            = each.key
   target_node     = var.pm_node
+  agent           = 1
   clone           = each.value.template
   full_clone      = each.value.full_clone
   onboot          = each.value.onboot
-  cores           = each.value.cores
-  sockets         = each.value.sockets
   memory          = each.value.memory
   hotplug         = each.value.hotplug
-  sshkeys         = each.value.sshkeys
-  ipconfig0       = each.value.ipconfig0
+  skip_ipv6       = each.value.skip_ipv6
+  scsihw          = "virtio-scsi-single"
   ciuser          = each.value.username
   cipassword      = each.value.password
-  ci_custom       = true
+  ciupgrade       = true
+  sshkeys         = var.sshkeys
+  ipconfig0       = "ip=dhcp"
   bootdisk        = "scsi0"
-  scsihw          = "virtio-scsi-pci"
 
-  disk {
-    slot     = 0
-    type     = "scsi"
-    storage  = each.value.storage_pool
-    size     = "20G"
+   disk {
+     slot       = "scsi0"
+     type       = "disk"
+     storage    = each.value.storage_pool
+     size       = "54784M"
+     asyncio    = "io_uring"
+     cache      = "writeback"
+     discard    = true
+     iothread   = true
+     backup     = false
+     emulatessd = true
+   }
+   disk {
+      slot       = "ide2"
+      type       = "cloudinit"
+      storage    = each.value.storage_pool
+      size       = "4096M"
+   }
+
+  cpu { 
+    cores          = each.value.cores
+    sockets        = each.value.sockets
+    numa           = true
+    type           = "host"
   }
 
   network {
+    id = 0
     model  = "virtio"
     bridge = each.value.network_bridge
-  }
-
-  lifecycle {
-    ignore_changes = [
-      network,
-      disk
-    ]
   }
 }
