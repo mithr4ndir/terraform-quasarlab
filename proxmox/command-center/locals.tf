@@ -1,11 +1,10 @@
 locals {
+  sshkeys = file("~/.ssh/id_rsa.pub")
   vms = {
-    command-center = {
+    command-center2 = {
       template        = "ubuntu-24-04-cloud-init-template"
-      ipconfig0       = "ip=dhcp"
-      sshkeys         = var.vm_defaults.sshkeys
-      username        = var.vm_defaults.username
-      password        = var.vm_defaults.password
+      username        = var.pm_user
+      password        = var.pm_password
       memory          = 8192
       cores           = 4
       sockets         = 1

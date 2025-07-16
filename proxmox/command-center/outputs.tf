@@ -1,7 +1,7 @@
 output "vm_ids" {
-  value = { for k, m in module.vms : k => m.vm_id }
+  value = module.vms.vm_ids
 }
 
 output "vm_ips" {
-  value = { for k, m in module.vms : k => m.vm_ip }
+  value = module.vms.vm_ips
 }

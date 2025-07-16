@@ -14,12 +14,12 @@ variable "proxmox_password" {
   type      = string
   sensitive = true
 }
-
+variable "sshkeys" {
+  type = string
+}
 variable "vms" {
   type = map(object({
     template        = string
-    ipconfig0       = string
-    sshkeys         = string
     username        = string
     password        = string
     memory          = number
