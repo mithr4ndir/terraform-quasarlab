@@ -2,6 +2,7 @@ provider "proxmox" {
   pm_api_url      = var.proxmox_api_url
   pm_user         = var.proxmox_user
   pm_password     = var.proxmox_password
+  pm_parallel     = 5
   pm_tls_insecure = true
 }
 
@@ -25,24 +26,27 @@ resource "proxmox_vm_qemu" "this" {
   ipconfig0       = "ip=dhcp"
   bootdisk        = "scsi0"
 
-   disk {
-     slot       = "scsi0"
-     type       = "disk"
-     storage    = each.value.storage_pool
-     size       = "54784M"
-     asyncio    = "io_uring"
-     cache      = "writeback"
-     discard    = true
-     iothread   = true
-     backup     = false
-     emulatessd = true
-   }
-   disk {
-      slot       = "ide2"
-      type       = "cloudinit"
-      storage    = each.value.storage_pool
-      size       = "4096M"
-   }
+  disks {
+    scsi {
+      scsi0 {
+        disk {
+          storage    = each.value.storage_pool
+          size       = each.value.storage_size
+          asyncio    = "io_uring"
+          cache      = "writeback"
+          discard    = true
+          iothread   = true
+          backup     = false
+          emulatessd = true
+        }
+      }
+    }
+    ide {
+      ide2 {
+        ignore = true
+      }
+    }
+  }
 
   cpu { 
     cores          = each.value.cores
