@@ -17,6 +17,7 @@ variable "pm_node" {
 
 variable "vm_defaults" {
   description = "Default values for VM deployment"
+  sensitive = true
   type = object({
     username        = string
     password        = string
