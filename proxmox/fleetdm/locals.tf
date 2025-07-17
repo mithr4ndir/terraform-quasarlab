@@ -1,10 +1,10 @@
 locals {
   sshkeys = file("~/.ssh/id_rsa.pub")
   vms = {
-    command-center1 = {
+    fleetdm1 = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = var.pm_user
-      password        = var.pm_password
+      username        = var.vm_defaults.username
+      password        = var.vm_defaults.password
       memory          = 8192
       cores           = 4
       sockets         = 1

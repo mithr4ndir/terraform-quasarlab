@@ -25,7 +25,6 @@ variable "vm_defaults" {
     username        = string
     password        = string
     storage_pool    = string
-    storage_size    = string
     network_bridge  = string
   })
 
@@ -33,7 +32,6 @@ variable "vm_defaults" {
     username        = "ubuntu"
     password        = "changeme"
     storage_pool    = "truenas-iscsi"
-    storage_size    = "54784M"
     network_bridge  = "vmbr0"
   }
 }
