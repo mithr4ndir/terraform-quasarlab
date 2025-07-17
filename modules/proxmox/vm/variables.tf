@@ -26,6 +26,7 @@ variable "vms" {
     cores           = number
     sockets         = number
     storage_pool    = string
+    storage_size    = string
     network_bridge  = string
     skip_ipv6       = bool
     onboot          = bool
