@@ -5,5 +5,5 @@ module "vms" {
   proxmox_api_url   = var.pm_api_url
   pm_node           = var.pm_node
   vms               = local.vms
-  sshkeys           = var.sshkeys
+  sshkeys           = local.sshkeys
 }
