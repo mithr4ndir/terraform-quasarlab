@@ -4,8 +4,8 @@ locals {
   vms = {
     k8cluster1 = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = var.pm_user
-      password        = var.pm_password
+      username        = var.vm_defaults.username
+      password        = var.vm_defaults.password
       memory          = 16384
       cores           = 8
       sockets         = 1
@@ -19,8 +19,8 @@ locals {
     }
     k8cluster2 = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = var.pm_user
-      password        = var.pm_password
+      username        = var.vm_defaults.username
+      password        = var.vm_defaults.password
       memory          = 16384
       cores           = 8
       sockets         = 1
@@ -34,8 +34,8 @@ locals {
     }
     k8cluster3 = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = var.pm_user
-      password        = var.pm_password
+      username        = var.vm_defaults.username
+      password        = var.vm_defaults.password
       memory          = 16384
       cores           = 8
       sockets         = 1

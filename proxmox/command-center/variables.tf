@@ -15,10 +15,6 @@ variable "pm_node" {
   type = string
 }
 
-variable "sshkeys" {
-  type = string
-}
-
 variable "vm_defaults" {
   description = "Default values for VM deployment"
   type = object({
