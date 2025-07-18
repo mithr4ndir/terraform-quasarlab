@@ -30,6 +30,7 @@ variable "vm_defaults" {
     username        = "ubuntu"
     password        = "changeme"
     storage_pool    = "truenas-iscsi"
+    storage_size    = "54784M"
     network_bridge  = "vmbr0"
   }
 }
