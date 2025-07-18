@@ -17,10 +17,12 @@ variable "pm_node" {
 
 variable "vm_defaults" {
   description = "Default values for VM deployment"
+  sensitive = true
   type = object({
     username        = string
     password        = string
     storage_pool    = string
+    storage_size    = string
     network_bridge  = string
   })
 
