@@ -18,30 +18,16 @@ A minimal Terraform repo to provision a 3‑node all‑in‑one Kubernetes clust
 
 ```plaintext
 terraform-quasarlab/
-├── .terraform/              # Terraform working directory
-├── terraform.tfstate       # Terraform state file
-├── terraform.tfstate.backup # Backup of previous state
-├── terraform.tfvars        # Your Proxmox credentials & VM defaults (gitignored)
-├── locals.tf               # Local variables (e.g., VM definitions)
-├── main.tf                 # Core resources (VM provisioning + HAProxy)
-├── variables.tf            # Input variable declarations
-├── outputs.tf              # Outputs (VM IDs & IPs)
-├── lke/                    # LKE (Linode Kubernetes Engine) configs
-│   ├── fleetdm/            # FleetDM setup
-│   ├── macos/              # macOS provisioning
-│   ├── munki/              # Munki client configs
-│   └── vault/              # Vault in-LKE deployment
-├── macos/                  # Standalone macOS provisioning configs
-├── munki/                  # Munki server configs
-├── nginx/                  # External NGINX LB configs (if separated)
-└── modules/
-    ├── proxmox/
-    │   ├── ad/             # Active Directory VM module
-    │   ├── command-center/ # Proxmox control-center VM module
-    │   ├── entra/          # Microsoft Entra ID lab VM module
-    │   ├── fleetdm/        # FleetDM VM module
-    │   └── kubernetes/     # Kubernetes node VM module
-    └── ike/                # Generic LKE cluster module
+├── modules/
+│   └── proxmox/
+│       └── vm/               # module skeleton: generic VM logic for any service
+├── proxmox/
+│   └── command-center/       # example per-service directory using the proxmox/vm module
+        ├── locals.tf                 # Local variables (e.g., VM definitions)
+        ├── main.tf                   # Core resource declarations
+        ├── variables.tf              # Input variable declarations
+        └── outputs.tf                # Outputs (VM IDs & IPs)
+        └── terraform.tfvars          # Not included and should not be put into git, var assigned described below     
 ```
 
 ---
