@@ -32,5 +32,6 @@ variable "vms" {
     onboot          = bool
     full_clone      = bool
     hotplug         = string
+    ipconfig0       = optional(string, "ip=dhcp")
   }))
 }
