@@ -23,7 +23,7 @@ resource "proxmox_vm_qemu" "this" {
   cipassword      = each.value.password
   ciupgrade       = true
   sshkeys         = var.sshkeys
-  ipconfig0       = "ip=dhcp"
+  ipconfig0       = each.value.ipconfig0
   bootdisk        = "scsi0"
 
   disks {

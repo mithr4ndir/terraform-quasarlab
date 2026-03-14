@@ -15,6 +15,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.170/24,gw=192.168.1.1"
     }
   }
 }
