@@ -1,45 +1,25 @@
-variable "pm_user" {
-  type = string
-}
-
-variable "pm_password" {
-  type      = string
-  sensitive = true
-}
-
-variable "pm_api_url" {
-  type = string
-}
-
 variable "pm_node" {
-  type = string
-}
-
-variable "ci_username" {
   type    = string
-  default = "ladino"
+  default = "pve"
 }
 
-variable "ci_password" {
-  type      = string
-  sensitive = true
-}
-
-variable "ssh_public_key" {
-  type = string
+variable "op_vault" {
+  description = "1Password vault name for credential lookups"
+  type        = string
+  default     = "Infrastructure"
 }
 
 variable "vm_defaults" {
   description = "Default values for VM deployment"
   type = object({
-    storage_pool    = string
-    storage_size    = string
-    network_bridge  = string
+    storage_pool   = string
+    storage_size   = string
+    network_bridge = string
   })
 
   default = {
-    storage_pool    = "truenas-iscsi"
-    storage_size    = "54784M"
-    network_bridge  = "vmbr0"
+    storage_pool   = "truenas-iscsi"
+    storage_size   = "54784M"
+    network_bridge = "vmbr0"
   }
 }
