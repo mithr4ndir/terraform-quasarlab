@@ -15,20 +15,29 @@ variable "pm_node" {
   type = string
 }
 
+variable "ci_username" {
+  type    = string
+  default = "ladino"
+}
+
+variable "ci_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
 variable "vm_defaults" {
   description = "Default values for VM deployment"
-  sensitive = true
   type = object({
-    username        = string
-    password        = string
     storage_pool    = string
     storage_size    = string
     network_bridge  = string
   })
 
   default = {
-    username        = "ubuntu"
-    password        = "changeme"
     storage_pool    = "truenas-iscsi"
     storage_size    = "54784M"
     network_bridge  = "vmbr0"
