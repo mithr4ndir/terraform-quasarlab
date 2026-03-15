@@ -1,10 +1,10 @@
 locals {
-  sshkeys = file("~/.ssh/id_rsa.pub")
+  sshkeys = var.ssh_public_key
   vms = {
     wazuh = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = "ladino"
-      password        = var.vm_defaults.password
+      username        = var.ci_username
+      password        = var.ci_password
       memory          = 16384
       cores           = 4
       sockets         = 1
