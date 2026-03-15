@@ -3,7 +3,7 @@ locals {
   vms = {
     wazuh = {
       template        = "ubuntu-24-04-cloud-init-template"
-      username        = var.vm_defaults.username
+      username        = "ladino"
       password        = var.vm_defaults.password
       memory          = 16384
       cores           = 4
