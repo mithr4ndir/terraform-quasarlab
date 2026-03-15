@@ -1,81 +1,64 @@
-# terraform-quasarlab 🌐
+# terraform-quasarlab — QuasarLab Infrastructure
 
-A minimal Terraform repo to provision a 3‑node all‑in‑one Kubernetes cluster on Proxmox (each VM runs both control‑plane + worker), plus an external HAProxy VM for API/bootstrap load balancing.
+Terraform configurations for provisioning VMs on a 2-node Proxmox cluster. Uses a reusable VM module and 1Password for credential management.
 
----
+## VMs Managed
 
-## What You Need to Run This
-
-- **Terraform 1.4+** (install via HashiCorp installer or your package manager)  
-- **Proxmox API credentials** (`pm_api_url`, `pm_user`, `pm_password`)  
-- **SSH key** in `~/.ssh/id_rsa.pub` for cloud-init access  
-- **Proxmox template** (e.g. `ubuntu-24-04-cloud-init-template`) present on your node  
-- **A `terraform.tfvars`** file (or environment variables) with your Proxmox details and VM defaults
-
----
+| VM | Module Path | IP | Cores | RAM | Storage | Host |
+|----|------------|-----|-------|-----|---------|------|
+| k8cluster1 | `proxmox/kubernetes/` | 192.168.1.90 | 8 | 16 GB | truenas-iscsi | pve |
+| k8cluster2 | `proxmox/kubernetes/` | 192.168.1.89 | 8 | 16 GB | truenas-iscsi | pve2 |
+| k8cluster3 | `proxmox/kubernetes/` | 192.168.1.91 | 8 | 16 GB | truenas-iscsi | pve |
+| nginx1 | `proxmox/nginx/` | 192.168.1.92 | 2 | 4 GB | truenas-iscsi | pve |
+| nginx2 | `proxmox/nginx/` | 192.168.1.93 | 2 | 4 GB | truenas-iscsi | pve |
+| jellyfin | `proxmox/jellyfin/` | 192.168.1.170 | 6 | 12 GB | truenas-iscsi | pve2 |
+| wazuh | `proxmox/wazuh/` | 192.168.1.171 | 4 | 16 GB | truenas-iscsi | pve |
+| command-center1 | `proxmox/command-center/` | 192.168.1.88 | 4 | 8 GB | truenas-iscsi | pve2 |
+| fleetdm | `proxmox/fleetdm/` | — | 4 | 8 GB | truenas-iscsi | — |
 
 ## Directory Layout
 
-```plaintext
+```
 terraform-quasarlab/
-├── modules/
-│   └── proxmox/
-│       └── vm/               # module skeleton: generic VM logic for any service
+├── modules/proxmox/vm/       # Reusable VM module (generic Proxmox VM)
 ├── proxmox/
-│   └── command-center/       # example per-service directory using the proxmox/vm module
-        ├── locals.tf                 # Local variables (e.g., VM definitions)
-        ├── main.tf                   # Core resource declarations
-        ├── variables.tf              # Input variable declarations
-        └── outputs.tf                # Outputs (VM IDs & IPs)
-        └── terraform.tfvars          # Not included and should not be put into git, var assigned described below     
+│   ├── kubernetes/           # 3-node K8s cluster
+│   ├── nginx/                # HA load balancer pair
+│   ├── jellyfin/             # Media server (GPU passthrough host)
+│   ├── wazuh/                # SIEM (1Password provider for credentials)
+│   ├── command-center/       # Management VM
+│   └── fleetdm/              # Fleet device management
 ```
 
----
+## Credentials
 
-## Quickstart
-1. **Clone** the repo:
-   ```bash
-   git clone git@…/terraform-quasarlab.git
-   cd terraform-quasarlab
-   ```
-2. **Create** a `terraform.tfvars` with:
-   ```hcl
-   pm_api_url      = "https://proxmox.local:8006/api2/json"
-   pm_user         = "root@pam"
-   pm_password     = "YOUR_PASS"
-   pm_node         = "pve"
+The `wazuh` module uses the **1Password Terraform provider** — credentials are fetched at runtime from the `Infrastructure` vault via `OP_SERVICE_ACCOUNT_TOKEN` env var.
 
-   # VM defaults
-   storage_pool    = "truenas-iscsi"
-   network_bridge  = "vmbr0"
-   memory          = 16384
-   cores           = 8
-   sockets         = 1
-   template        = "ubuntu-24-04-cloud-init-template"
-   ```
-3. **Initialize** Terraform:
-   ```bash
-   terraform init
-   ```
-4. **Plan** your changes:
-   ```bash
-   terraform plan
-   ```
-5. **Apply** and watch your VMs spin up:
-   ```bash
-   terraform apply -auto-approve
+Older modules use `terraform.tfvars` (gitignored) with:
+```hcl
+pm_api_url  = "https://<pve-host>:8006/api2/json"
+pm_user     = "root@pam"
+pm_password = "..."
+```
 
----
+## State
 
-## Tips & Tricks
-- **Parallelism:** use -parallelism=N to throttle Proxmox API calls (or set pm_parallel in the provider).
+Terraform state is stored on NFS at `/mnt/terraform-state/state/<module>/terraform.tfstate` (not in git).
 
-- **Split clone & provision:** disable define_connection_info in the module to clone VMs fast, then provision via Ansible or null_resource.
+## Usage
 
-- **Module reuse:** parameterize for_each = var.vms to create any number of nodes with one block.
+```bash
+cd proxmox/wazuh
+export OP_SERVICE_ACCOUNT_TOKEN="..."
+terraform init
+terraform plan
+terraform apply
+```
 
-- **State locking:** consider a remote backend (S3, Consul) if multiple engineers will run Terraform concurrently.
+## Related Repos
 
-- **Secrets:** never commit terraform.tfvars with credentials—gitignore it!
-
-© 2025 terraform-quasarlab
+| Repository | Purpose |
+|------------|---------|
+| [ansible-quasarlab](https://github.com/mithr4ndir/ansible-quasarlab) | Post-provisioning configuration for all VMs |
+| [k8s-argocd](https://github.com/mithr4ndir/k8s-argocd) | Kubernetes workloads deployed via ArgoCD |
+| [observability-quasarlab](https://github.com/mithr4ndir/observability-quasarlab) | Grafana dashboards and monitoring config |
