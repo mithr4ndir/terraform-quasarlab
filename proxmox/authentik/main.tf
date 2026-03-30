@@ -21,7 +21,7 @@ data "onepassword_vault" "infra" {
 
 data "onepassword_item" "pve" {
   vault = data.onepassword_vault.infra.uuid
-  title = "Proxmox VE API"
+  title = "Proxmox API"
 }
 
 module "vms" {
