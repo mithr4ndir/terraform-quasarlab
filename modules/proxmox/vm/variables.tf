@@ -33,5 +33,6 @@ variable "vms" {
     full_clone      = bool
     hotplug         = string
     ipconfig0       = optional(string, "ip=dhcp")
+    tags            = optional(string, "")
   }))
 }
