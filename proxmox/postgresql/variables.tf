@@ -27,7 +27,7 @@ variable "vm_defaults" {
   })
 
   default = {
-    username        = "ubuntu"
+    username        = "ladino"
     password        = "changeme"
     storage_pool    = "truenas-iscsi"
     storage_size    = "54784M"
