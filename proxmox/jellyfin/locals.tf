@@ -6,7 +6,7 @@ locals {
       username        = var.vm_defaults.username
       password        = var.vm_defaults.password
       memory          = 12288
-      cores           = 6
+      cores           = 12
       sockets         = 1
       storage_pool    = var.vm_defaults.storage_pool
       storage_size    = var.vm_defaults.storage_size
