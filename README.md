@@ -25,14 +25,15 @@ terraform-quasarlab/
 │   ├── kubernetes/           # 3-node K8s cluster
 │   ├── nginx/                # HA load balancer pair
 │   ├── jellyfin/             # Media server (GPU passthrough host)
-│   ├── wazuh/                # SIEM (1Password provider for credentials)
+│   ├── wazuh/                # SIEM (credentials via scripts/tf-cached-secrets.sh)
+│   ├── authentik/            # Authentik IdP (credentials via scripts/tf-cached-secrets.sh)
 │   ├── command-center/       # Management VM
 │   └── fleetdm/              # Fleet device management
 ```
 
 ## Credentials
 
-The `wazuh` module uses the **1Password Terraform provider** — credentials are fetched at runtime from the `Infrastructure` vault via `OP_SERVICE_ACCOUNT_TOKEN` env var.
+The `wazuh` and `authentik` modules take Proxmox API and cloud-init credentials as `sensitive` input variables. Run them through `scripts/tf-cached-secrets.sh`, which exports `TF_VAR_*` values from the ansible-quasarlab 1Password file cache (`/var/lib/ansible-quasarlab/secrets`, 7 day TTL) and honors its rate-limit kill switch. A plan costs zero 1Password reads while the cache is fresh; `fmt`, `validate` and `init` never load credentials. The source item is `op://Infrastructure/Proxmox API` (override with `PVE_OP_ITEM`). Do not keep `plan -out` files: they contain variable values.
 
 Older modules use `terraform.tfvars` (gitignored) with:
 ```hcl
@@ -49,11 +50,12 @@ Terraform state is stored on NFS at `/mnt/terraform-state/state/<module>/terrafo
 
 ```bash
 cd proxmox/wazuh
-export OP_SERVICE_ACCOUNT_TOKEN="..."
 terraform init
-terraform plan
-terraform apply
+../../scripts/tf-cached-secrets.sh plan
+../../scripts/tf-cached-secrets.sh apply
 ```
+
+Tests for the wrapper: `scripts/tests/test-tf-cached-secrets.sh` (stubs op and terraform, never reads a secret).
 
 ## Related Repos
 

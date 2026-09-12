@@ -1,25 +1,11 @@
 locals {
-  ci_section = one([
-    for s in data.onepassword_item.pve.section : s if s.label == "Cloud-Init"
-  ])
-
-  sshkeys = one([
-    for f in local.ci_section.field : f.value if f.label == "ssh_public_key"
-  ])
-
-  ci_username = one([
-    for f in local.ci_section.field : f.value if f.label == "ci_username"
-  ])
-
-  ci_password = one([
-    for f in local.ci_section.field : f.value if f.label == "ci_password"
-  ])
+  sshkeys = var.ssh_public_key
 
   vms = {
     authentik = {
       template       = "ubuntu-24-04-cloud-init-template"
-      username       = local.ci_username
-      password       = local.ci_password
+      username       = var.ci_username
+      password       = var.ci_password
       memory         = 4096
       cores          = 2
       sockets        = 1
