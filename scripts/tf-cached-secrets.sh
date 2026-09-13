@@ -25,9 +25,22 @@ set -euo pipefail
 
 ANSIBLE_QUASARLAB_DIR="${ANSIBLE_QUASARLAB_DIR:-/var/lib/ansible-quasarlab/repo}"
 # These credentials rarely rotate, so refresh weekly instead of the
-# library default of 12h. Delete the tf_* cache files to force a refresh.
+# library default of 48h. Delete the tf_* cache files to force a refresh.
 export OP_SECRET_CACHE_TTL_SECS="${OP_SECRET_CACHE_TTL_SECS:-604800}"
 PVE_OP_ITEM="${PVE_OP_ITEM:-op://Infrastructure/Proxmox API}"
+
+# Cache slugs are namespaced by item so a PVE_OP_ITEM override can never be
+# served another item's cached credentials. The tag is the first 16 hex
+# characters of sha256 over the exact reference string.
+# SECURITY: slugs become file names and show up in logs, so they carry only
+# this hash, never the reference itself.
+item_cache_tag() {
+    local tag
+    tag=$(printf '%s' "$1" | sha256sum) || return 1
+    tag="${tag:0:16}"
+    [[ "$tag" =~ ^[0-9a-f]{16}$ ]] || return 1
+    printf '%s' "$tag"
+}
 
 needs_credentials() {
     local arg
@@ -54,6 +67,12 @@ load_credentials() {
     # shellcheck source=/dev/null
     source "${ANSIBLE_QUASARLAB_DIR}/scripts/lib/op-secret-cache.sh"
 
+    local tag
+    if ! tag=$(item_cache_tag "$PVE_OP_ITEM"); then
+        echo "ERROR: could not derive a cache tag for PVE_OP_ITEM (is sha256sum installed?)" >&2
+        return 1
+    fi
+
     local env_name slug op_path value missing=0
     while read -r env_name slug op_path; do
         # Fail closed: never hand terraform an empty credential.
@@ -64,11 +83,11 @@ load_credentials() {
         fi
         export "${env_name}=${value}"
     done <<EOF_SECRETS
-TF_VAR_pm_user         tf_pve_username      ${PVE_OP_ITEM}/username
-TF_VAR_pm_password     tf_pve_password      ${PVE_OP_ITEM}/password
-TF_VAR_ci_username     tf_ci_username       ${PVE_OP_ITEM}/Cloud-Init/ci_username
-TF_VAR_ci_password     tf_ci_password       ${PVE_OP_ITEM}/Cloud-Init/ci_password
-TF_VAR_ssh_public_key  tf_ssh_public_key    ${PVE_OP_ITEM}/Cloud-Init/ssh_public_key
+TF_VAR_pm_user         tf_pve_username.${tag}      ${PVE_OP_ITEM}/username
+TF_VAR_pm_password     tf_pve_password.${tag}      ${PVE_OP_ITEM}/password
+TF_VAR_ci_username     tf_ci_username.${tag}       ${PVE_OP_ITEM}/Cloud-Init/ci_username
+TF_VAR_ci_password     tf_ci_password.${tag}       ${PVE_OP_ITEM}/Cloud-Init/ci_password
+TF_VAR_ssh_public_key  tf_ssh_public_key.${tag}    ${PVE_OP_ITEM}/Cloud-Init/ssh_public_key
 EOF_SECRETS
     return "$missing"
 }

@@ -18,6 +18,12 @@ mkdir -p "$WORK/bin" "$WORK/cache" "$WORK/state"
 cat > "$WORK/bin/op" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB_OP_LOG"
+# STUB_OP_SERVE=1 makes `op read <ref>` succeed with a value derived from
+# the reference, so tests can tell which item a credential came from.
+if [[ "${STUB_OP_SERVE:-}" == 1 && "${1:-}" == read ]]; then
+    printf 'live:%s' "$2"
+    exit 0
+fi
 exit 1
 STUB
 cat > "$WORK/bin/logger" <<'STUB'
@@ -44,10 +50,16 @@ failures=0
 pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1" >&2; failures=$((failures + 1)); }
 
+# Slugs for the default item carry the first 16 hex characters of sha256
+# over the reference. Computed here independently of the wrapper.
+DEFAULT_ITEM='op://Infrastructure/Proxmox API'
+OTHER_ITEM='op://Infrastructure/Proxmox API Staging'
+DEFAULT_TAG="$(printf '%s' "$DEFAULT_ITEM" | sha256sum | cut -c1-16)"
+
 seed_cache() {
     local slug
     for slug in tf_pve_username tf_pve_password tf_ci_username tf_ci_password tf_ssh_public_key; do
-        printf 'value-of-%s' "$slug" > "$WORK/cache/$slug"
+        printf 'value-of-%s' "$slug" > "$WORK/cache/${slug}.${DEFAULT_TAG}"
     done
 }
 
@@ -86,7 +98,7 @@ done
 # 4. Missing cache and no op token: fail closed, terraform not run,
 #    and the error output names the variable but never a value.
 rm -f "$WORK/cache/"* "$STUB_OP_LOG"
-printf 'value-of-tf_pve_password' > "$WORK/cache/tf_pve_password"
+printf 'value-of-tf_pve_password' > "$WORK/cache/tf_pve_password.${DEFAULT_TAG}"
 rc=0
 out="$("$WRAPPER" plan 2>&1)" || rc=$?
 if (( rc != 0 )) && ! grep -q '^args=' <<<"$out" \
@@ -115,6 +127,81 @@ if (( rc != 0 )) && ! grep -q '^args=' <<<"$out"; then
     pass "missing libraries fail closed"
 else
     fail "missing libraries (rc=$rc): $out"
+fi
+
+# 7. Overriding PVE_OP_ITEM never serves the default item's cached values.
+#    The override name shares a prefix with the default on purpose.
+find "$WORK/cache" -mindepth 1 -delete
+rm -f "$STUB_OP_LOG"
+out="$(OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+if grep -qx "TF_VAR_pm_password=live:${DEFAULT_ITEM}/password" <<<"$out"; then
+    pass "default item populates its cache from op"
+else
+    fail "default item populate: $out"
+fi
+rm -f "$STUB_OP_LOG"
+out="$(PVE_OP_ITEM="$OTHER_ITEM" OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+if grep -qx "TF_VAR_pm_user=live:${OTHER_ITEM}/username" <<<"$out" \
+    && grep -qx "TF_VAR_pm_password=live:${OTHER_ITEM}/password" <<<"$out" \
+    && grep -qx "TF_VAR_ci_username=live:${OTHER_ITEM}/Cloud-Init/ci_username" <<<"$out" \
+    && grep -qx "TF_VAR_ci_password=live:${OTHER_ITEM}/Cloud-Init/ci_password" <<<"$out" \
+    && grep -qx "TF_VAR_ssh_public_key=live:${OTHER_ITEM}/Cloud-Init/ssh_public_key" <<<"$out" \
+    && ! grep -q "live:${DEFAULT_ITEM}/" <<<"$out"; then
+    pass "PVE_OP_ITEM override does not reuse the default item's cache"
+else
+    fail "override served another item's cache: $out"
+fi
+
+# 8. Both items now hit their own cache: op is never called, even though
+#    live reads would succeed.
+rm -f "$STUB_OP_LOG"
+out_default="$(OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+out_other="$(PVE_OP_ITEM="$OTHER_ITEM" OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+if grep -qx "TF_VAR_pm_password=live:${DEFAULT_ITEM}/password" <<<"$out_default" \
+    && grep -qx "TF_VAR_pm_password=live:${OTHER_ITEM}/password" <<<"$out_other" \
+    && [[ ! -e "$STUB_OP_LOG" ]]; then
+    pass "default and override items each hit their own cache"
+else
+    fail "cache hit per item (op log: $(cat "$STUB_OP_LOG" 2>/dev/null)): $out_default / $out_other"
+fi
+
+# 9. Cache file names (values and lock files) carry an item tag, never the
+#    raw op:// reference or any part of it.
+names="$(ls -A "$WORK/cache")"
+slugs="$(ls "$WORK/cache")"
+if ! grep -qiE 'op:|infrastructure|proxmox|staging|api| ' <<<"$names"; then
+    pass "cache file names contain no raw item reference"
+else
+    fail "raw reference in cache file names: $names"
+fi
+if [[ "$(wc -l <<<"$slugs")" -eq 10 ]] \
+    && ! grep -vqE '^tf_(pve_username|pve_password|ci_username|ci_password|ssh_public_key)\.[0-9a-f]{16}$' <<<"$slugs" \
+    && [[ "$(cut -d. -f2 <<<"$slugs" | sort -u | wc -l)" -eq 2 ]]; then
+    pass "each item gets its own five tagged slugs"
+else
+    fail "unexpected slug set: $slugs"
+fi
+
+# 10. Migration: legacy untagged tf_* entries from before item scoping are
+#     never served. The first run refetches all five once, later runs hit
+#     the tagged cache.
+find "$WORK/cache" -mindepth 1 -delete
+rm -f "$STUB_OP_LOG"
+for slug in tf_pve_username tf_pve_password tf_ci_username tf_ci_password tf_ssh_public_key; do
+    printf 'legacy-%s' "$slug" > "$WORK/cache/$slug"
+done
+out_first="$(OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+reads_first="$(grep -c '^read ' "$STUB_OP_LOG" 2>/dev/null || true)"
+rm -f "$STUB_OP_LOG"
+out_second="$(OP_SERVICE_ACCOUNT_TOKEN=dummy STUB_OP_SERVE=1 "$WRAPPER" plan 2>&1)"
+if grep -qx "TF_VAR_pm_password=live:${DEFAULT_ITEM}/password" <<<"$out_first" \
+    && ! grep -q 'legacy-' <<<"$out_first$out_second" \
+    && [[ "$reads_first" == 5 ]] \
+    && grep -qx "TF_VAR_pm_password=live:${DEFAULT_ITEM}/password" <<<"$out_second" \
+    && [[ ! -e "$STUB_OP_LOG" ]]; then
+    pass "legacy untagged entries are refetched exactly once"
+else
+    fail "legacy migration (first run reads=$reads_first): $out_first / $out_second"
 fi
 
 if (( failures > 0 )); then
