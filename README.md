@@ -33,7 +33,7 @@ terraform-quasarlab/
 
 ## Credentials
 
-The `wazuh` and `authentik` modules take Proxmox API and cloud-init credentials as `sensitive` input variables. Run them through `scripts/tf-cached-secrets.sh`, which exports `TF_VAR_*` values from the ansible-quasarlab 1Password file cache (`/var/lib/ansible-quasarlab/secrets`, 7 day TTL) and honors its rate-limit kill switch. A plan costs zero 1Password reads while the cache is fresh; `fmt`, `validate` and `init` never load credentials. The source item is `op://Infrastructure/Proxmox API` (override with `PVE_OP_ITEM`). Do not keep `plan -out` files: they contain variable values.
+The `wazuh` and `authentik` modules take Proxmox API and cloud-init credentials as `sensitive` input variables. Run them through `scripts/tf-cached-secrets.sh`, which exports `TF_VAR_*` values from the ansible-quasarlab 1Password file cache (`/var/lib/ansible-quasarlab/secrets`, 7 day TTL) and honors its rate-limit kill switch. A plan costs zero 1Password reads while the cache is fresh; `fmt`, `validate` and `init` never load credentials. The source item is `op://Infrastructure/Proxmox API` (override with `PVE_OP_ITEM`). Cache slugs are scoped per item as `tf_<name>.<16 hex chars of sha256 over the item reference>`, so an override never reuses another item's cached credentials; delete the matching `tf_*` files to force a refresh. Do not keep `plan -out` files: they contain variable values.
 
 Older modules use `terraform.tfvars` (gitignored) with:
 ```hcl
