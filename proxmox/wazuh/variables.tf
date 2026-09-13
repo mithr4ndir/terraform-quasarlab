@@ -3,10 +3,32 @@ variable "pm_node" {
   default = "pve"
 }
 
-variable "op_vault" {
-  description = "1Password vault name for credential lookups"
-  type        = string
-  default     = "Infrastructure"
+# Credentials below are supplied as TF_VAR_* environment variables by
+# scripts/tf-cached-secrets.sh from the ansible-quasarlab 1Password file
+# cache. Never put them in a committed file.
+variable "pm_user" {
+  type      = string
+  sensitive = true
+}
+
+variable "pm_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "ci_username" {
+  type      = string
+  sensitive = true
+}
+
+variable "ci_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "ssh_public_key" {
+  type      = string
+  sensitive = true
 }
 
 variable "vm_defaults" {
