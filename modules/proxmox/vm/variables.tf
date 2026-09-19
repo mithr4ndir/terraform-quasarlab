@@ -19,19 +19,25 @@ variable "sshkeys" {
 }
 variable "vms" {
   type = map(object({
-    template        = string
-    username        = string
-    password        = string
-    memory          = number
-    cores           = number
-    sockets         = number
-    storage_pool    = string
-    storage_size    = string
-    network_bridge  = string
-    skip_ipv6       = bool
-    onboot          = bool
-    full_clone      = bool
-    hotplug         = string
-    ipconfig0       = optional(string, "ip=dhcp")
+    template       = string
+    username       = string
+    password       = string
+    memory         = number
+    cores          = number
+    sockets        = number
+    storage_pool   = string
+    storage_size   = string
+    network_bridge = string
+    skip_ipv6      = bool
+    onboot         = bool
+    full_clone     = bool
+    hotplug        = string
+    ipconfig0      = optional(string, "ip=dhcp")
   }))
+}
+
+variable "disk_backup" {
+  description = "Include the VM disk in vzdump backups. Leave true unless the guest's data is reproducible from code."
+  type        = bool
+  default     = true
 }

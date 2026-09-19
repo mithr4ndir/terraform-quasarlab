@@ -36,7 +36,11 @@ resource "proxmox_vm_qemu" "this" {
           cache      = "writeback"
           discard    = true
           iothread   = true
-          backup     = false
+          # Must stay true: with backup=false the disk is excluded from vzdump,
+          # so a backup job still runs green and writes an archive containing
+          # no disks. Every VM had this set, which is why the cluster had no
+          # usable backups (ansible-quasarlab#173).
+          backup     = var.disk_backup
           emulatessd = true
         }
       }
