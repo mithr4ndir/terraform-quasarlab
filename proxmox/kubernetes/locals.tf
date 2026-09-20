@@ -16,6 +16,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.90/24,gw=192.168.1.1"
     }
     k8cluster2 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -31,6 +32,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.89/24,gw=192.168.1.1"
     }
     k8cluster3 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -46,6 +48,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.91/24,gw=192.168.1.1"
     }
   }
 }
