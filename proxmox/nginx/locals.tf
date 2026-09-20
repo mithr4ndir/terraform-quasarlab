@@ -15,6 +15,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.92/24,gw=192.168.1.1"
     }
     nginx2 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -30,6 +31,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.93/24,gw=192.168.1.1"
     }
   }
 }
