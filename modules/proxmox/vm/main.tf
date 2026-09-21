@@ -10,7 +10,7 @@ resource "proxmox_vm_qemu" "this" {
   for_each = var.vms
 
   name            = each.key
-  target_node     = var.pm_node
+  target_node     = coalesce(each.value.target_node, var.pm_node)
   agent           = 1
   clone           = each.value.template
   full_clone      = each.value.full_clone
@@ -24,6 +24,7 @@ resource "proxmox_vm_qemu" "this" {
   ciupgrade       = true
   sshkeys         = var.sshkeys
   ipconfig0       = each.value.ipconfig0
+  tags            = each.value.tags
   bootdisk        = "scsi0"
 
   disks {
@@ -42,6 +43,21 @@ resource "proxmox_vm_qemu" "this" {
           # usable backups (ansible-quasarlab#173).
           backup     = var.disk_backup
           emulatessd = true
+        }
+      }
+      dynamic "scsi1" {
+        for_each = each.value.data_disk_size != null ? [1] : []
+        content {
+          disk {
+            storage    = each.value.data_disk_pool
+            size       = each.value.data_disk_size
+            asyncio    = "io_uring"
+            cache      = "writeback"
+            discard    = true
+            iothread   = true
+            backup     = var.disk_backup
+            emulatessd = true
+          }
         }
       }
     }
