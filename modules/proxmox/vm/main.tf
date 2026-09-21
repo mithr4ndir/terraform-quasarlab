@@ -51,6 +51,7 @@ resource "proxmox_vm_qemu" "this" {
   ciupgrade       = true
   sshkeys         = var.sshkeys
   ipconfig0       = each.value.ipconfig0
+  tags            = each.value.tags
   bootdisk        = "scsi0"
 
   disks {
@@ -69,6 +70,21 @@ resource "proxmox_vm_qemu" "this" {
           # usable backups (ansible-quasarlab#173).
           backup     = var.disk_backup
           emulatessd = true
+        }
+      }
+      dynamic "scsi1" {
+        for_each = each.value.data_disk_size != null ? [1] : []
+        content {
+          disk {
+            storage    = each.value.data_disk_pool
+            size       = each.value.data_disk_size
+            asyncio    = "io_uring"
+            cache      = "writeback"
+            discard    = true
+            iothread   = true
+            backup     = var.disk_backup
+            emulatessd = true
+          }
         }
       }
     }
