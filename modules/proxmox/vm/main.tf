@@ -16,6 +16,28 @@ resource "proxmox_vm_qemu" "this" {
   full_clone      = each.value.full_clone
   onboot          = each.value.onboot
   memory          = each.value.memory
+  # `memory` stays IN the hotplug string: resizing a VM without a reboot is
+  # wanted here. The cost is that PVE then boots the guest with 1 GiB of static
+  # RAM and hot-adds the rest, and Linux sizes kernel.threads-max once, during
+  # early boot, from what it saw then. A 16 GiB VM therefore starts life with
+  # the thread ceilings of a 1 GiB one, which is what killed herdr.service on
+  # command-center1 on 2026-09-21.
+  #
+  # That is repaired in code rather than by giving up hotplug, in three places
+  # because the kernel derives three different things from that one number:
+  #
+  #   kernel.threads-max      ansible-quasarlab vm_baseline, sysctl, fleet-wide
+  #   DefaultTasksMax, slice  ansible-quasarlab cmd_center, absolute drop-ins
+  #   RLIMIT_NPROC            /etc/security/limits.d, because pam_limits resets
+  #                           it after systemd applies the unit's LimitNPROC
+  #
+  # Verified across a real reboot on 2026-10-02, with memory hotplug enabled:
+  # threads-max 130032, DefaultTasksMax 8192, user slice 8192. Only RLIMIT_NPROC
+  # came back wrong (3423), which is what the limits.d entry addresses.
+  #
+  # If a guest ever needs the kernel to size its own ceilings correctly at boot,
+  # drop `memory` from its hotplug string and cold boot it. That is a per-VM
+  # decision, not the default.
   hotplug         = each.value.hotplug
   skip_ipv6       = each.value.skip_ipv6
   scsihw          = "virtio-scsi-single"
