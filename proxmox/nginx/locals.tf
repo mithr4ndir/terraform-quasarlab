@@ -15,6 +15,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve"
     }
     nginx2 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -30,6 +31,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve"
     }
   }
 }

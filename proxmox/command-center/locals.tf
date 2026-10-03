@@ -15,6 +15,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve2"
     }
   }
 }

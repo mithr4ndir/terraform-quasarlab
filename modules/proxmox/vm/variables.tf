@@ -33,6 +33,11 @@ variable "vms" {
     full_clone     = bool
     hotplug        = string
     ipconfig0      = optional(string, "ip=dhcp")
+    # Which PVE node this VM runs on. Omit to use var.pm_node for every VM in
+    # the map, which only works while they all live on the same node: the
+    # kubernetes module has k8cluster1 on pve and k8cluster2/3 on pve2, and
+    # could not express that at all before this existed.
+    target_node = optional(string)
   }))
 }
 

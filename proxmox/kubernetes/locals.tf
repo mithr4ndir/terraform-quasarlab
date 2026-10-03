@@ -16,6 +16,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve"
     }
     k8cluster2 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -31,6 +32,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve2"
     }
     k8cluster3 = {
       template        = "ubuntu-24-04-cloud-init-template"
@@ -46,6 +48,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      target_node     = "pve2"
     }
   }
 }
