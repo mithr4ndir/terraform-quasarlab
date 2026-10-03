@@ -117,6 +117,24 @@ resource "proxmox_vm_qemu" "this" {
       ciuser,
       cipassword,
       define_connection_info,
+      # Disks, until the module can describe the ones these VMs actually have.
+      # This block declares exactly one scsi0 disk, and the imported VMs do not
+      # match it. Read from a JSON plan on 2026-10-03, because the text plan
+      # masks all of it as "(sensitive value)": vm_defaults is sensitive, so a
+      # disk shrink is invisible in the human-readable output.
+      #
+      #   command-center1  250G on nvme_1tb      -> 54784M on truenas-iscsi
+      #   k8cluster1       150G + scsi1 20G SSD1 -> 54784M, scsi1 GONE
+      #   k8cluster2       150G + scsi1 20G ssd_1 -> 54784M, scsi1 GONE
+      #   k8cluster3       150G + scsi1 20G ssd_2 -> 54784M, scsi1 GONE
+      #
+      # Terraform called all of that an in-place "update", so "0 to destroy"
+      # said nothing about it. The provider cannot shrink a disk, and those
+      # scsi1 disks are the node-local etcd volumes on all three control-plane
+      # members. storage_pool and storage_size are now declared per VM to match
+      # reality, so this can be narrowed or removed once the module grows
+      # support for additional disks. Tracked separately.
+      disks,
     ]
   }
 }

@@ -8,8 +8,8 @@ locals {
       memory          = 16384
       cores           = 8
       sockets         = 1
-      storage_pool    = var.vm_defaults.storage_pool
-      storage_size    = var.vm_defaults.storage_size
+      storage_pool    = "nvme_1tb"
+      storage_size    = "250G"
       network_bridge  = var.vm_defaults.network_bridge
       skip_ipv6       = true
       onboot          = true
