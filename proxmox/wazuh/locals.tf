@@ -16,6 +16,7 @@ locals {
       onboot         = true
       full_clone     = true
       hotplug        = "network,disk,usb,memory,cpu"
+      target_node     = "pve2"
       ipconfig0      = "ip=192.168.1.171/24,gw=192.168.1.1"
     }
   }
