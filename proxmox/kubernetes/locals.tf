@@ -16,6 +16,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.90/24,gw=192.168.1.1"
       target_node     = "pve"
     }
     k8cluster2 = {
@@ -32,6 +33,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.89/24,gw=192.168.1.1"
       target_node     = "pve2"
     }
     k8cluster3 = {
@@ -48,6 +50,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.91/24,gw=192.168.1.1"
       target_node     = "pve2"
     }
   }

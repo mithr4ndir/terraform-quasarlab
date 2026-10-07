@@ -15,6 +15,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.92/24,gw=192.168.1.1"
       target_node     = "pve"
     }
     nginx2 = {
@@ -31,6 +32,7 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      ipconfig0       = "ip=192.168.1.93/24,gw=192.168.1.1"
       target_node     = "pve"
     }
   }
