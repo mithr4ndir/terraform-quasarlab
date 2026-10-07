@@ -6,6 +6,3 @@
 .terraform.lock.hcl
 crash.log
 
-.mcp.json
-tfplan
-*.tfplan
