@@ -1,25 +1,11 @@
 locals {
-  ci_section = one([
-    for s in data.onepassword_item.pve.section : s if s.label == "Cloud-Init"
-  ])
-
-  sshkeys = one([
-    for f in local.ci_section.field : f.value if f.label == "ssh_public_key"
-  ])
-
-  ci_username = one([
-    for f in local.ci_section.field : f.value if f.label == "ci_username"
-  ])
-
-  ci_password = one([
-    for f in local.ci_section.field : f.value if f.label == "ci_password"
-  ])
+  sshkeys = var.ssh_public_key
 
   vms = {
     wazuh = {
       template       = "ubuntu-24-04-cloud-init-template"
-      username       = local.ci_username
-      password       = local.ci_password
+      username       = var.ci_username
+      password       = var.ci_password
       memory         = 16384
       cores          = 4
       sockets        = 1
@@ -30,6 +16,7 @@ locals {
       onboot         = true
       full_clone     = true
       hotplug        = "network,disk,usb,memory,cpu"
+      target_node     = "pve2"
       ipconfig0      = "ip=192.168.1.171/24,gw=192.168.1.1"
     }
   }

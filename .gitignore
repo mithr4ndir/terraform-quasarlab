@@ -8,3 +8,4 @@ crash.log
 
 .mcp.json
 tfplan
+*.tfplan
