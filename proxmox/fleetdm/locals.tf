@@ -15,6 +15,12 @@ locals {
       onboot          = true
       full_clone      = true
       hotplug         = "network,disk,usb,memory,cpu"
+      # Explicitly DHCP, not a static address invented here. fleetdm1 does not
+      # exist on the cluster, so there is no live address to copy, and picking
+      # a free one is a decision for whoever creates the VM (check the pfSense
+      # pool first). The point of making ipconfig0 required is to stop DHCP
+      # happening SILENTLY, not to forbid it: stated, it is a declaration.
+      ipconfig0       = "ip=dhcp"
     }
   }
 }
