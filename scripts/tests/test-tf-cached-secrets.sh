@@ -44,6 +44,8 @@ export STUB_OP_LOG="$WORK/op.log"
 export OP_SECRET_CACHE_DIR="$WORK/cache"
 export OP_KILLSWITCH_STATE_DIR="$WORK/state"
 export OP_KILLSWITCH_METRIC_FILE="$WORK/state/metric.prom"
+export TF_LOCK_DIR="$WORK/locks"
+export TF_LOCK_TIMEOUT=2
 unset OP_SERVICE_ACCOUNT_TOKEN TF_VAR_pm_user TF_VAR_pm_password TF_VAR_ci_username TF_VAR_ci_password TF_VAR_ssh_public_key
 
 failures=0
@@ -202,6 +204,84 @@ if grep -qx "TF_VAR_pm_password=live:${DEFAULT_ITEM}/password" <<<"$out_first" \
     pass "legacy untagged entries are refetched exactly once"
 else
     fail "legacy migration (first run reads=$reads_first): $out_first / $out_second"
+fi
+
+# --- serialisation (flock) ------------------------------------------------
+# The local backend gives no usable locking: state is on NFS and several agent
+# sessions share this host. These cover the lock actually holding, not just the
+# code path existing.
+
+lock_key() { printf '%s' "$1" | sha256sum | cut -c1-16; }
+
+# N. A held lock makes a second run fail, and the error names the holder.
+rm -f "$WORK/cache/"*; seed_cache
+mkdir -p "$WORK/locks" "$WORK/mod-a" "$WORK/mod-b"
+held="$WORK/locks/$(lock_key "$WORK/mod-a").lock"
+printf 'pid=99999 user=someone-else dir=%s\n' "$WORK/mod-a" > "$held"
+exec {HOLD_FD}>>"$held"
+flock "$HOLD_FD"
+set +e
+out="$(cd "$WORK/mod-a" && "$WRAPPER" apply 2>&1)"
+rc=$?
+set -e
+if (( rc != 0 )) && grep -q "another terraform run is holding" <<<"$out" \
+    && grep -q "someone-else" <<<"$out" && ! grep -q "^args=" <<<"$out"; then
+    pass "a held lock blocks a second apply and names the holder"
+else
+    fail "held lock (rc=$rc): $out"
+fi
+
+# N+1. A different module directory is not blocked by that lock.
+out="$(cd "$WORK/mod-b" && "$WRAPPER" apply 2>&1)"
+if grep -qx 'args=apply' <<<"$out"; then
+    pass "a lock on one module does not block another"
+else
+    fail "second module blocked: $out"
+fi
+
+# N+2. The lock is released when terraform exits, so the next run proceeds.
+exec {HOLD_FD}>&-
+out="$(cd "$WORK/mod-a" && "$WRAPPER" apply 2>&1)"
+out2="$(cd "$WORK/mod-a" && "$WRAPPER" apply 2>&1)"
+if grep -qx 'args=apply' <<<"$out" && grep -qx 'args=apply' <<<"$out2"; then
+    pass "the lock is released when terraform exits"
+else
+    fail "sequential runs: $out / $out2"
+fi
+
+# N+3. Read-only subcommands are not serialised at all.
+exec {HOLD_FD}>>"$held"
+flock "$HOLD_FD"
+out="$(cd "$WORK/mod-a" && "$WRAPPER" validate 2>&1)"
+if grep -qx 'args=validate' <<<"$out"; then
+    pass "validate is not serialised"
+else
+    fail "validate blocked by the lock: $out"
+fi
+
+# N+4. The escape hatch works and says so on stderr.
+out="$(cd "$WORK/mod-a" && TF_SKIP_LOCK=1 "$WRAPPER" apply 2>&1)"
+if grep -qx 'args=apply' <<<"$out" && grep -q "TF_SKIP_LOCK=1" <<<"$out"; then
+    pass "TF_SKIP_LOCK=1 bypasses the lock and warns"
+else
+    fail "skip lock: $out"
+fi
+exec {HOLD_FD}>&-
+
+# N+5. -chdir keys the lock, since it decides which state is touched.
+held_b="$WORK/locks/$(lock_key "$WORK/mod-b").lock"
+: > "$held_b"
+exec {HOLD_B}>>"$held_b"
+flock "$HOLD_B"
+set +e
+out="$("$WRAPPER" -chdir="$WORK/mod-b" apply 2>&1)"
+rc=$?
+set -e
+exec {HOLD_B}>&-
+if (( rc != 0 )) && grep -q "another terraform run is holding" <<<"$out"; then
+    pass "-chdir keys the lock to the target module"
+else
+    fail "-chdir lock (rc=$rc): $out"
 fi
 
 if (( failures > 0 )); then
