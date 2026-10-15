@@ -66,6 +66,26 @@ variable "vms" {
     # the guest and can be grown or detached independently.
     data_disk_pool = optional(string, null)
     data_disk_size = optional(string, null)
+    # Opt the data disk out of vzdump while the OS disk stays in. Only for
+    # disks whose contents are reproducible from code or a download (model
+    # weights, caches). Excluding the OS disk is never the answer: that is how
+    # every backup came out green and empty (ansible-quasarlab#173).
+    data_disk_backup = optional(bool, true)
+
+    # Clone by VMID instead of by template name. Names are not unique in
+    # Proxmox: pve has two templates called ubuntu-24-04-cloud-init-template
+    # (9000 and 9002), and a name lookup silently picks one of them.
+    template_id = optional(number, null)
+
+    # PCI passthrough. raw_id without a function suffix ("0000:0a:00") passes
+    # every function of the device, which a GPU needs: they share an IOMMU
+    # group. pcie = true requires machine = "q35".
+    machine = optional(string, null)
+    pci_devices = optional(list(object({
+      raw_id = string
+      pcie   = optional(bool, true)
+      rombar = optional(bool, true)
+    })), [])
   }))
 
   validation {
@@ -74,6 +94,14 @@ variable "vms" {
       (v.data_disk_pool == null) == (v.data_disk_size == null)
     ])
     error_message = "data_disk_pool and data_disk_size must be set together, or both omitted."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.vms :
+      length(v.pci_devices) == 0 || !anytrue([for d in v.pci_devices : d.pcie]) || v.machine == "q35"
+    ])
+    error_message = "A PCI device with pcie = true needs machine = \"q35\"; the default i440fx has no PCIe bus."
   }
 }
 
