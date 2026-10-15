@@ -70,6 +70,8 @@ variable "vms" {
     # disks whose contents are reproducible from code or a download (model
     # weights, caches). Excluding the OS disk is never the answer: that is how
     # every backup came out green and empty (ansible-quasarlab#173).
+    # Creation-only: disks is in ignore_changes, so flipping this on an existing
+    # VM changes nothing. Fix the live flag with qm set if it ever has to move.
     data_disk_backup = optional(bool, true)
 
     # Clone by VMID instead of by template name. Names are not unique in

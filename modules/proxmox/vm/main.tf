@@ -156,6 +156,10 @@ resource "proxmox_vm_qemu" "this" {
   lifecycle {
     ignore_changes = [
       clone,
+      # Same reason as clone, and the provider marks it ForceNew: an imported
+      # VM has no clone_id in state, so setting template_id on it would plan
+      # a destroy and recreate. Found in review of #34.
+      clone_id,
       full_clone,
       ciuser,
       cipassword,

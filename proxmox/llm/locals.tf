@@ -9,9 +9,10 @@ locals {
   # so this VM starts life as a burn-in and nothing depends on it yet.
   #
   # Passthrough rather than an LXC on the host driver, deliberately: pve2 also
-  # runs two of the three etcd members and command-center1. If the GPU wedges
-  # here, only this VM dies; with the host driver loaded it can take the
-  # hypervisor kernel with it.
+  # runs two of the three etcd members and command-center1. With VFIO a driver
+  # hang stays in the guest; with the host driver loaded it is a hypervisor
+  # kernel problem. VFIO does not contain physical faults: a PCIe error or a
+  # failed reset can still reach the host, which is why this is a burn-in.
   vms = {
     llm1 = {
       template = "ubuntu-24-04-cloud-init-template"
@@ -54,8 +55,7 @@ locals {
       vga_type      = "std"
       serial_socket = true
       target_node   = "pve2"
-      # Placeholder until the pfSense DHCP pool is confirmed not to cover it.
-      # Nothing answered ARP on .180 on 2026-10-15.
+      # Confirmed outside the pfSense DHCP pool by the owner on 2026-10-15.
       ipconfig0 = "ip=192.168.1.180/24,gw=192.168.1.1"
       tags      = "linux,llm,gpu"
     }
