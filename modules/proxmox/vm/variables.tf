@@ -66,6 +66,37 @@ variable "vms" {
     # the guest and can be grown or detached independently.
     data_disk_pool = optional(string, null)
     data_disk_size = optional(string, null)
+    # Opt the data disk out of vzdump while the OS disk stays in. Only for
+    # disks whose contents are reproducible from code or a download (model
+    # weights, caches). Excluding the OS disk is never the answer: that is how
+    # every backup came out green and empty (ansible-quasarlab#173).
+    # Creation-only: disks is in ignore_changes, so flipping this on an existing
+    # VM changes nothing. Fix the live flag with qm set if it ever has to move.
+    data_disk_backup = optional(bool, true)
+
+    # Clone by VMID instead of by template name. Names are not unique in
+    # Proxmox: pve has two templates called ubuntu-24-04-cloud-init-template
+    # (9000 and 9002), and a name lookup silently picks one of them.
+    template_id = optional(number, null)
+
+    # PCI passthrough. raw_id without a function suffix ("0000:0a:00") passes
+    # every function of the device, which a GPU needs: they share an IOMMU
+    # group. pcie = true requires machine = "q35".
+    machine = optional(string, null)
+    pci_devices = optional(list(object({
+      raw_id = string
+      pcie   = optional(bool, true)
+      rombar = optional(bool, true)
+    })), [])
+
+    # Console. Clones of the ubuntu-24-04 and debian-12 templates inherit
+    # vga: serial0 without a serial0 device, so there is no console at all.
+    # With a GPU passed through that is worse than cosmetic: on 2026-10-15
+    # llm1 sat in SeaBIOS at 100% of one vCPU with zero disk reads until
+    # vga=std and serial0=socket were set, then booted in under 40s.
+    # Leave both unset to keep whatever the VM has today.
+    vga_type      = optional(string, null)
+    serial_socket = optional(bool, false)
   }))
 
   validation {
@@ -74,6 +105,14 @@ variable "vms" {
       (v.data_disk_pool == null) == (v.data_disk_size == null)
     ])
     error_message = "data_disk_pool and data_disk_size must be set together, or both omitted."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.vms :
+      length(v.pci_devices) == 0 || !anytrue([for d in v.pci_devices : d.pcie]) || v.machine == "q35"
+    ])
+    error_message = "A PCI device with pcie = true needs machine = \"q35\"; the default i440fx has no PCIe bus."
   }
 }
 

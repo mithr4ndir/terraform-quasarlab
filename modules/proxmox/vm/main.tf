@@ -17,8 +17,10 @@ resource "proxmox_vm_qemu" "this" {
   # on pve2 while their modules said pve, and jellyfin is the mirror of that.
   target_node     = coalesce(each.value.target_node, var.pm_node)
   agent           = 1
-  clone           = each.value.template
+  clone           = each.value.template_id == null ? each.value.template : null
+  clone_id        = each.value.template_id
   full_clone      = each.value.full_clone
+  machine         = each.value.machine
   onboot          = each.value.onboot
   memory          = each.value.memory
   # `memory` stays IN the hotplug string: resizing a VM without a reboot is
@@ -82,7 +84,7 @@ resource "proxmox_vm_qemu" "this" {
             cache      = "writeback"
             discard    = true
             iothread   = true
-            backup     = var.disk_backup
+            backup     = var.disk_backup && each.value.data_disk_backup
             emulatessd = true
           }
         }
@@ -100,6 +102,31 @@ resource "proxmox_vm_qemu" "this" {
     sockets        = each.value.sockets
     numa           = true
     type           = "host"
+  }
+
+  dynamic "pci" {
+    for_each = { for i, d in each.value.pci_devices : i => d }
+    content {
+      id     = pci.key
+      raw_id = pci.value.raw_id
+      pcie   = pci.value.pcie
+      rombar = pci.value.rombar
+    }
+  }
+
+  dynamic "vga" {
+    for_each = each.value.vga_type == null ? [] : [each.value.vga_type]
+    content {
+      type = vga.value
+    }
+  }
+
+  dynamic "serial" {
+    for_each = each.value.serial_socket ? [0] : []
+    content {
+      id   = serial.value
+      type = "socket"
+    }
   }
 
   network {
@@ -129,10 +156,21 @@ resource "proxmox_vm_qemu" "this" {
   lifecycle {
     ignore_changes = [
       clone,
+      # Same reason as clone, and the provider marks it ForceNew: an imported
+      # VM has no clone_id in state, so setting template_id on it would plan
+      # a destroy and recreate. Found in review of #34.
+      clone_id,
       full_clone,
       ciuser,
       cipassword,
       define_connection_info,
+      # PVE 8 replaced the legacy bootdisk key with boot: order=..., and does
+      # not keep bootdisk on VMs it creates. The provider then reads it back
+      # empty and plans "+ bootdisk = scsi0" forever. On llm1 on 2026-10-15
+      # applying that diff (alongside vga) rebooted the guest via
+      # automatic_reboot. Imported VMs still carry the legacy line, so this is
+      # inert for them.
+      bootdisk,
       # Disks, until the module can describe the ones these VMs actually have.
       # This block declares exactly one scsi0 disk, and the imported VMs do not
       # match it. Read from a JSON plan on 2026-10-03, because the text plan
