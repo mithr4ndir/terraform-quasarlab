@@ -114,6 +114,21 @@ resource "proxmox_vm_qemu" "this" {
     }
   }
 
+  dynamic "vga" {
+    for_each = each.value.vga_type == null ? [] : [each.value.vga_type]
+    content {
+      type = vga.value
+    }
+  }
+
+  dynamic "serial" {
+    for_each = each.value.serial_socket ? [0] : []
+    content {
+      id   = serial.value
+      type = "socket"
+    }
+  }
+
   network {
     id = 0
     model  = "virtio"
@@ -145,6 +160,13 @@ resource "proxmox_vm_qemu" "this" {
       ciuser,
       cipassword,
       define_connection_info,
+      # PVE 8 replaced the legacy bootdisk key with boot: order=..., and does
+      # not keep bootdisk on VMs it creates. The provider then reads it back
+      # empty and plans "+ bootdisk = scsi0" forever. On llm1 on 2026-10-15
+      # applying that diff (alongside vga) rebooted the guest via
+      # automatic_reboot. Imported VMs still carry the legacy line, so this is
+      # inert for them.
+      bootdisk,
       # Disks, until the module can describe the ones these VMs actually have.
       # This block declares exactly one scsi0 disk, and the imported VMs do not
       # match it. Read from a JSON plan on 2026-10-03, because the text plan

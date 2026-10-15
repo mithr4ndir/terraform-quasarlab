@@ -48,7 +48,12 @@ locals {
       pci_devices = [
         { raw_id = "0000:0a:00" },
       ]
-      target_node = "pve2"
+      # Without an emulated display the GPU's option ROM becomes the primary
+      # display under SeaBIOS, and this VM never left the firmware. See the
+      # module comment on vga_type.
+      vga_type      = "std"
+      serial_socket = true
+      target_node   = "pve2"
       # Placeholder until the pfSense DHCP pool is confirmed not to cover it.
       # Nothing answered ARP on .180 on 2026-10-15.
       ipconfig0 = "ip=192.168.1.180/24,gw=192.168.1.1"

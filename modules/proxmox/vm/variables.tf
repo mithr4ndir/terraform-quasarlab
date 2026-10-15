@@ -86,6 +86,15 @@ variable "vms" {
       pcie   = optional(bool, true)
       rombar = optional(bool, true)
     })), [])
+
+    # Console. Clones of the ubuntu-24-04 and debian-12 templates inherit
+    # vga: serial0 without a serial0 device, so there is no console at all.
+    # With a GPU passed through that is worse than cosmetic: on 2026-10-15
+    # llm1 sat in SeaBIOS at 100% of one vCPU with zero disk reads until
+    # vga=std and serial0=socket were set, then booted in under 40s.
+    # Leave both unset to keep whatever the VM has today.
+    vga_type      = optional(string, null)
+    serial_socket = optional(bool, false)
   }))
 
   validation {
