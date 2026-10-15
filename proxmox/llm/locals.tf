@@ -24,13 +24,18 @@ locals {
       memory      = 16384
       cores       = 8
       sockets     = 1
-      # Local thin pool on pve2, not truenas-iscsi: model loads are large
-      # sequential reads, and this VM should not care whether the NAS is up.
-      storage_pool = "ssd_1"
+      # truenas-iscsi, like the rest of the fleet. Not pve2's local SATA pools:
+      # ssd_1 and ssd_2 are single Samsung 860s that each hold a k8s etcd disk
+      # (k8cluster2 on ssd_1, k8cluster3 on ssd_2). On 2026-10-15 a sustained
+      # ~80 MiB/s PBS seed on ssd_2 pushed pve2 io PSI to 86% and k8cluster3
+      # NotReady for 14 minutes, and a 14 GB model download is the same load.
+      # llm1 was first created on ssd_1 and recreated here before anything
+      # heavy was written. Trade-off accepted: llm1 now goes down with the NAS.
+      storage_pool = "truenas-iscsi"
       storage_size = "64G"
       # Model weights. Re-downloadable, so kept out of vzdump; the OS disk
       # stays in.
-      data_disk_pool   = "ssd_1"
+      data_disk_pool   = "truenas-iscsi"
       data_disk_size   = "250G"
       data_disk_backup = false
       network_bridge   = var.vm_defaults.network_bridge
