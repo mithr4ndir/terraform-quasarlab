@@ -11,19 +11,28 @@ locals {
   # PBS runs on plain Debian via the proxmox-backup-server package, so the
   # whole thing stays Terraform + Ansible managed with no ISO install.
   #
-  # The datastore is a SECOND disk (scsi1) on each node's near-empty thin
-  # pool. Keeping it off the OS disk means a runaway datastore cannot wedge
-  # the guest, and the datastore can be grown or detached independently.
+  # The datastore is a SECOND disk (scsi1). Keeping it off the OS disk means a
+  # runaway datastore cannot wedge the guest, and the datastore can be grown or
+  # detached independently.
+  #
+  # WHICH pool is a availability decision, not a capacity one. A backup target
+  # writes hard and continuously, so it must not share a physical device with
+  # anything latency-sensitive, and in this cluster that means etcd. See the
+  # per-node reasoning on each data_disk_pool below.
   vms = {
     pbs1 = {
-      template       = "debian-12-cloud-init-template"
-      username       = var.vm_defaults.username
-      password       = var.vm_defaults.password
-      memory         = 4096
-      cores          = 2
-      sockets        = 1
-      storage_pool   = "SSD1"
-      storage_size   = "32G"
+      template     = "debian-12-cloud-init-template"
+      username     = var.vm_defaults.username
+      password     = var.vm_defaults.password
+      memory       = 4096
+      cores        = 2
+      sockets      = 1
+      storage_pool = "SSD1"
+      storage_size = "32G"
+      # SSD2 (/dev/sdb on pve) carries this datastore and nothing else.
+      # k8cluster1's etcd is on SSD1 (/dev/sda), a different physical device.
+      # That separation is load-bearing: pbs1 takes the hourly vzdump of the
+      # whole lab, so it is the heaviest writer here. Verified 2026-10-15.
       data_disk_pool = "SSD2"
       data_disk_size = "600G"
       network_bridge = var.vm_defaults.network_bridge
@@ -45,21 +54,49 @@ locals {
       # hotplug back would regress it to 1 GiB static. The fleet repairs the
       # ceilings in Ansible instead (ansible-quasarlab#206, #210); that path
       # is fine for general guests and is not worth the risk here.
-      hotplug        = "network,disk,usb,cpu"
-      ipconfig0      = "ip=192.168.1.61/24,gw=192.168.1.1"
-      target_node    = "pve"
-      tags           = "linux,backup,pbs"
+      hotplug     = "network,disk,usb,cpu"
+      ipconfig0   = "ip=192.168.1.61/24,gw=192.168.1.1"
+      target_node = "pve"
+      tags        = "linux,backup,pbs"
     }
     pbs2 = {
-      template       = "debian-12-cloud-init-template"
-      username       = var.vm_defaults.username
-      password       = var.vm_defaults.password
-      memory         = 4096
-      cores          = 2
-      sockets        = 1
-      storage_pool   = "ssd_1"
-      storage_size   = "32G"
-      data_disk_pool = "ssd_2"
+      template     = "debian-12-cloud-init-template"
+      username     = var.vm_defaults.username
+      password     = var.vm_defaults.password
+      memory       = 4096
+      cores        = 2
+      sockets      = 1
+      storage_pool = "ssd_1"
+      storage_size = "32G"
+      # nvme_1tb, NOT ssd_2, and NOT ssd_1.
+      #
+      # THIS LINE DOES NOT MOVE THE DISK. `disks` is in the VM module's
+      # lifecycle ignore_changes, so a pool change here plans nothing at all:
+      # verified by plan on 2026-10-15, which showed only the unrelated cores
+      # drift. It is recorded so the declared pool matches reality, which is
+      # what makes it safe to narrow or drop that ignore later. Leaving
+      # "ssd_2" here would plan a move BACK to the etcd spindle on the day
+      # someone does. The relocation itself is an operational step.
+      #
+      # On 2026-10-15 the first seed of the pbs1 to pbs2 sync ran unthrottled
+      # at ~80 MiB/s with ~841 requests in flight against ssd_2 (/dev/sdc, a
+      # SATA Samsung 860), which also carries k8cluster3's etcd disk. pve2's
+      # io PSI hit 86% full, etcd fell ~700 raft indexes behind,
+      # kube-apiserver restarted 36 times on "etcdserver: request timed out",
+      # and k8cluster3 went NotReady for 14 minutes. The cluster kept quorum
+      # only through the other two members.
+      #
+      # ssd_1 (/dev/sda) is the obvious-looking alternative and is wrong: it
+      # carries k8cluster2's etcd, the OTHER control-plane member on this same
+      # host, so moving there just retargets the identical failure at the
+      # member whose loss would hurt more.
+      #
+      # nvme_1tb (/dev/nvme0n1) has 816G free and command-center1 as its only
+      # other tenant. Pairing this with the sync job's --rate-in ceiling in
+      # ansible-quasarlab roles/pbs: relocation alone only moves the blast
+      # radius, since a replica that can saturate a shared spindle will
+      # eventually find one.
+      data_disk_pool = "nvme_1tb"
       data_disk_size = "600G"
       network_bridge = var.vm_defaults.network_bridge
       skip_ipv6      = true
@@ -80,10 +117,10 @@ locals {
       # hotplug back would regress it to 1 GiB static. The fleet repairs the
       # ceilings in Ansible instead (ansible-quasarlab#206, #210); that path
       # is fine for general guests and is not worth the risk here.
-      hotplug        = "network,disk,usb,cpu"
-      ipconfig0      = "ip=192.168.1.62/24,gw=192.168.1.1"
-      target_node    = "pve2"
-      tags           = "linux,backup,pbs"
+      hotplug     = "network,disk,usb,cpu"
+      ipconfig0   = "ip=192.168.1.62/24,gw=192.168.1.1"
+      target_node = "pve2"
+      tags        = "linux,backup,pbs"
     }
   }
 }
