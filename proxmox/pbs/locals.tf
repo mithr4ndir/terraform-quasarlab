@@ -15,17 +15,26 @@ locals {
   # runaway datastore cannot wedge the guest, and the datastore can be grown or
   # detached independently.
   #
-  # WHICH pool is a availability decision, not a capacity one. A backup target
+  # WHICH pool is an availability decision, not a capacity one. A backup target
   # writes hard and continuously, so it must not share a physical device with
   # anything latency-sensitive, and in this cluster that means etcd. See the
   # per-node reasoning on each data_disk_pool below.
+  #
+  # cores is 4, not the 2 these guests were built with. Raised on the live
+  # guests on 2026-10-07 because verify and garbage collection are CPU bound:
+  # SHA-256 over every chunk in the store, single threaded per task, and on 2
+  # cores a verify job starved the proxy that backups connect to. `cores` is
+  # boot-time topology rather than the hot-plug knob (`vcpus` is), so the
+  # change needed a stop and start on each guest and was applied that way.
+  # Terraform still said 2 until now, which means the next apply on this
+  # stack would have quietly reverted it on each guest's next boot.
   vms = {
     pbs1 = {
       template     = "debian-12-cloud-init-template"
       username     = var.vm_defaults.username
       password     = var.vm_defaults.password
       memory       = 4096
-      cores        = 2
+      cores        = 4
       sockets      = 1
       storage_pool = "SSD1"
       storage_size = "32G"
@@ -64,7 +73,7 @@ locals {
       username     = var.vm_defaults.username
       password     = var.vm_defaults.password
       memory       = 4096
-      cores        = 2
+      cores        = 4
       sockets      = 1
       storage_pool = "ssd_1"
       storage_size = "32G"
