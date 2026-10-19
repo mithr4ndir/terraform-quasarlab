@@ -17,20 +17,20 @@ variable "pm_node" {
 
 variable "vm_defaults" {
   description = "Default values for VM deployment"
-  sensitive = true
+  sensitive   = true
   type = object({
-    username        = string
-    password        = string
-    storage_pool    = string
-    storage_size    = string
-    network_bridge  = string
+    username       = string
+    password       = string
+    storage_pool   = string
+    storage_size   = string
+    network_bridge = string
   })
 
   default = {
-    username        = "ubuntu"
-    password        = "changeme"
-    storage_pool    = "truenas-iscsi"
-    storage_size    = "54784M"
-    network_bridge  = "vmbr0"
+    username       = "ubuntu"
+    password       = "changeme"
+    storage_pool   = "truenas-iscsi"
+    storage_size   = "54784M"
+    network_bridge = "vmbr0"
   }
 }
